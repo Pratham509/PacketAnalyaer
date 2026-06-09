@@ -1,7 +1,7 @@
 # DPI Engine - Deep Packet Inspection System
 
 
-This document explains **everything** about this project - from basic networking concepts to the complete code architecture. After reading this, you should understand exactly how packets flow through the system without needing to read the code.
+This document explains **everything** about this project - from basic networking concepts to the complete code architecture. After reading this, you should understand exactly how packets flow through the system.
 
 ---
 
@@ -23,7 +23,7 @@ This document explains **everything** about this project - from basic networking
 
 ## 1. What is DPI?
 
-**Deep Packet Inspection (DPI)** is a technology used to examine the contents of network packets as they pass through a checkpoint. Unlike simple firewalls that only look at packet headers (source/destination IP), DPI looks *inside* the packet payload.
+**Deep Packet Inspection (DPI)** is a technology used to examine the contents of network packets as they pass through a checkpoint. Unlike simple firewalls that only look at packet headers (source/destination IP), DPI can look at the actual data being transmitted.
 
 ### Real-World Uses:
 - **ISPs**: Throttle or block certain applications (e.g., BitTorrent)
@@ -65,19 +65,19 @@ When you visit a website, data travels through multiple "layers":
 Every network packet is like a **Russian nesting doll** - headers wrapped inside headers:
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│ Ethernet Header (14 bytes)                                       │
-│ ┌──────────────────────────────────────────────────────────────┐ │
-│ │ IP Header (20 bytes)                                         │ │
-│ │ ┌──────────────────────────────────────────────────────────┐ │ │
-│ │ │ TCP Header (20 bytes)                                    │ │ │
-│ │ │ ┌──────────────────────────────────────────────────────┐ │ │ │
-│ │ │ │ Payload (Application Data)                           │ │ │ │
-│ │ │ │ e.g., TLS Client Hello with SNI                      │ │ │ │
-│ │ │ └──────────────────────────────────────────────────────┘ │ │ │
-│ │ └──────────────────────────────────────────────────────────┘ │ │
-│ └──────────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│ Ethernet Header (14 bytes)                                           │
+│ ┌────────────────────────────────────────────────────────────────────┐
+│ │ IP Header (20 bytes)                                              │ │
+│ │ ┌──────────────────────────────────────────────────────────────┐  │ │
+│ │ │ TCP Header (20 bytes)                                        │  │ │
+│ │ │ ┌──────────────────────────────────────────────────────────┐ │  │ │
+│ │ │ │ Payload (Application Data)                               │ │  │ │
+│ │ │ │ e.g., TLS Client Hello with SNI                          │ │  │ │
+│ │ │ └──────────────────────────────────────────────────────────┘ │  │ │
+│ │ └──────────────────────────────────────────────────────────────┘  │ │
+│ └────────────────────────────────────────────────────────────────────┘
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### The Five-Tuple
@@ -413,23 +413,23 @@ The multi-threaded version (`dpi_mt.cpp`) adds **parallelism** for high performa
       ┌──────┴──────┐               ┌──────┴──────┐
       │hash % 2     │               │hash % 2     │
       ▼             ▼               ▼             ▼
-┌──────────┐ ┌──────────┐   ┌──────────┐ ┌──────────┐
-│FP0 Thread│ │FP1 Thread│   │FP2 Thread│ │FP3 Thread│
-│(Fast Path)│ │(Fast Path)│   │(Fast Path)│ │(Fast Path)│
-└─────┬────┘ └─────┬────┘   └─────┬────┘ └─────┬────┘
-      │            │              │            │
-      └────────────┴──────────────┴────────────┘
-                          │
-                          ▼
-              ┌───────────────────────┐
-              │   Output Queue        │
-              └───────────┬───────────┘
-                          │
-                          ▼
-              ┌───────────────────────┐
-              │  Output Writer Thread │
-              │  (writes to PCAP)     │
-              └───────────────────────┘
+ ┌──────────┐ ┌──────────┐   ┌──────────┐ ┌──────────┐
+ │FP0 Thread│ │FP1 Thread│   │FP2 Thread│ │FP3 Thread│
+ │(Fast Path)│ │(Fast Path)│   │(Fast Path)│ │(Fast Path)│
+ └─────┬────┘ └─────┬────┘   └─────┬────┘ └─────┬────┘
+       │            │              │            │
+       └────────────┴──────────────┴────────────┘
+                           │
+                           ▼
+               ┌───────────────────────┐
+               │   Output Queue        │
+               └───────────┬───────────┘
+                           │
+                           ▼
+               ┌───────────────────────┐
+               │  Output Writer Thread │
+               │  (writes to PCAP)     │
+               └───────────────────────┘
 ```
 
 ### Why This Design?
@@ -998,56 +998,31 @@ python3 generate_test_pcap.py
 
 1. **Add More App Signatures**
    ```cpp
-   // In types.cpp
-   if (sni.find("twitch") != std::string::npos)
+   // In types.cpp, expand sniToAppType()
+   if (sni.find("netflix") != std::string::npos) 
+       return AppType::NETFLIX;
+   if (sni.find("twitch") != std::string::npos) 
        return AppType::TWITCH;
    ```
 
-2. **Add Bandwidth Throttling**
-   ```cpp
-   // Instead of DROP, delay packets
-   if (shouldThrottle(flow)) {
-       std::this_thread::sleep_for(10ms);
-   }
-   ```
+2. **Support QUIC/HTTP3**
+   - Implement QUIC packet parsing
+   - Extract SNI from QUIC Initial packets
 
-3. **Add Live Statistics Dashboard**
-   ```cpp
-   // Separate thread printing stats every second
-   void statsThread() {
-       while (running) {
-           printStats();
-           sleep(1);
-       }
-   }
-   ```
+3. **Machine Learning Classification**
+   - Use ML to classify encrypted traffic
+   - Go beyond SNI-based detection
 
-4. **Add QUIC/HTTP3 Support**
-   - QUIC uses UDP on port 443
-   - SNI is in the Initial packet (encrypted differently)
+4. **Real-time Performance Monitoring**
+   - Stream stats to a dashboard
+   - Track latency, throughput
 
-5. **Add Persistent Rules**
-   - Save rules to file
-   - Load on startup
+5. **IPv6 Support**
+   - Add IPv6 header parsing
+   - Handle IPv6 extension headers
 
 ---
 
-## Summary
+## License
 
-This DPI engine demonstrates:
-
-1. **Network Protocol Parsing** - Understanding packet structure
-2. **Deep Packet Inspection** - Looking inside encrypted connections
-3. **Flow Tracking** - Managing stateful connections
-4. **Multi-threaded Architecture** - Scaling with thread pools
-5. **Producer-Consumer Pattern** - Thread-safe queues
-
-The key insight is that even HTTPS traffic leaks the destination domain in the TLS handshake, allowing network operators to identify and control application usage.
-
----
-
-## Questions?
-
-If you have questions about any part of this project, the code is well-commented and follows the same flow described in this document. Start with the simple version (`main_working.cpp`) to understand the concepts, then move to the multi-threaded version (`dpi_mt.cpp`) to see how parallelism is added.
-
-Happy learning! 🚀
+This project is open source and available under the MIT License.
