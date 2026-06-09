@@ -23,7 +23,7 @@ This document explains **everything** about this project - from basic networking
 
 ## 1. What is DPI?
 
-**Deep Packet Inspection (DPI)** is a technology used to examine the contents of network packets as they pass through a checkpoint. Unlike simple firewalls that only look at packet headers (source/destination IP), DPI can look at the actual data being transmitted.
+**Deep Packet Inspection (DPI)** is a technology used to examine the contents of network packets as they pass through a checkpoint. Unlike simple firewalls that only look at packet headers (source IP, destination IP), DPI can see inside the encrypted data and identify what application is running.
 
 ### Real-World Uses:
 - **ISPs**: Throttle or block certain applications (e.g., BitTorrent)
@@ -51,7 +51,7 @@ When you visit a website, data travels through multiple "layers":
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ Layer 7: Application    │ HTTP, TLS, DNS               │
-├─────────────────────────────────────────────────────────┤
+├─────────────────────────────────���───────────────────────┤
 │ Layer 4: Transport      │ TCP (reliable), UDP (fast)   │
 ├─────────────────────────────────────────────────────────┤
 │ Layer 3: Network        │ IP addresses (routing)       │
@@ -65,19 +65,19 @@ When you visit a website, data travels through multiple "layers":
 Every network packet is like a **Russian nesting doll** - headers wrapped inside headers:
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
+┌────────────────────────────────────────────────────────────────────┐
 │ Ethernet Header (14 bytes)                                           │
-│ ┌────────────────────────────────────────────────────────────────────┐
+│ ┌───────────────────────────────────────────────────────────────────┐
 │ │ IP Header (20 bytes)                                              │ │
-│ │ ┌──────────────────────────────────────────────────────────────┐  │ │
+│ │ ┌─────────────────────────────────────────────────────────────────┐
 │ │ │ TCP Header (20 bytes)                                        │  │ │
 │ │ │ ┌──────────────────────────────────────────────────────────┐ │  │ │
 │ │ │ │ Payload (Application Data)                               │ │  │ │
 │ │ │ │ e.g., TLS Client Hello with SNI                          │ │  │ │
 │ │ │ └──────────────────────────────────────────────────────────┘ │  │ │
-│ │ └──────────────────────────────────────────────────────────────┘  │ │
-│ └────────────────────────────────────────────────────────────────────┘
-└──────────────────────────────────────────────────────────────────────┘
+│ │ └─────────────────────────────────────────────────────────────────┐
+│ └───────────────────────────────────────────────────────────────────┐
+└────────────────────────────────────────────────────────────────────┘
 ```
 
 ### The Five-Tuple
@@ -419,17 +419,17 @@ The multi-threaded version (`dpi_mt.cpp`) adds **parallelism** for high performa
  └─────┬────┘ └─────┬────┘   └─────┬────┘ └─────┬────┘
        │            │              │            │
        └────────────┴──────────────┴────────────┘
-                           │
-                           ▼
-               ┌───────────────────────┐
-               │   Output Queue        │
-               └───────────┬───────────┘
-                           │
-                           ▼
-               ┌───────────────────────┐
-               │  Output Writer Thread │
-               │  (writes to PCAP)     │
-               └───────────────────────┘
+                            │
+                            ▼
+                ┌───────────────────────┐
+                │   Output Queue        │
+                └───────────┬───────────┘
+                            │
+                            ▼
+                ┌───────────────────────┐
+                │  Output Writer Thread │
+                │  (writes to PCAP)     │
+                └───────────────────────┘
 ```
 
 ### Why This Design?
@@ -998,31 +998,47 @@ python3 generate_test_pcap.py
 
 1. **Add More App Signatures**
    ```cpp
-   // In types.cpp, expand sniToAppType()
-   if (sni.find("netflix") != std::string::npos) 
-       return AppType::NETFLIX;
-   if (sni.find("twitch") != std::string::npos) 
-       return AppType::TWITCH;
+   // In types.cpp, add more app detection patterns
+   if (sni.find("tiktok") != std::string::npos) 
+       return AppType::TIKTOK;
    ```
 
-2. **Support QUIC/HTTP3**
-   - Implement QUIC packet parsing
-   - Extract SNI from QUIC Initial packets
+2. **Real-time Processing**
+   - Replace PCAP files with live packet capture (libpcap)
+   - Process packets as they arrive on the network interface
 
-3. **Machine Learning Classification**
-   - Use ML to classify encrypted traffic
-   - Go beyond SNI-based detection
+3. **Advanced Filtering**
+   - Time-based rules (block YouTube only 9-5)
+   - Quota systems (limit bandwidth per user)
+   - Geographic blocking (block content from certain regions)
 
-4. **Real-time Performance Monitoring**
-   - Stream stats to a dashboard
-   - Track latency, throughput
+4. **Better Performance**
+   - Add SIMD instructions for parallel packet processing
+   - Use memory pooling to reduce allocations
+   - Profile with performance tools (perf, valgrind)
 
-5. **IPv6 Support**
-   - Add IPv6 header parsing
-   - Handle IPv6 extension headers
+5. **Logging & Alerting**
+   - Write detailed logs to a database
+   - Alert on suspicious patterns
+   - Generate real-time dashboards
+
+6. **Machine Learning**
+   - Train models to detect encrypted protocols
+   - Identify P2P vs client-server patterns
+   - Anomaly detection for potential attacks
 
 ---
 
-## License
+## Summary
 
-This project is open source and available under the MIT License.
+This project demonstrates **Deep Packet Inspection** - a sophisticated technique to:
+1. **Read** packet captures from disk
+2. **Parse** protocol headers to understand packet structure
+3. **Inspect** encrypted connections by extracting SNI
+4. **Classify** traffic by application type
+5. **Block** unwanted connections
+6. **Report** statistics and patterns
+
+The multi-threaded version shows how to achieve **high performance** through careful thread design and lock-free data structures.
+
+Good luck, and happy networking!
