@@ -1,0 +1,33 @@
+# C++ Build Output
+build/
+*.exe
+*.o
+*.obj
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Node / React
+node_modules/
+dist/
+.next/
+out/
+build/
+.npm/
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
