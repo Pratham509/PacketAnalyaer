@@ -143,7 +143,8 @@ async def upload_pcap(file: UploadFile = File(...)):
     
     # Path to the C++ executable
     # Assumes it's built in the parent directory
-    engine_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dpi_engine.exe")
+    engine_name = "dpi_engine.exe" if os.name == 'nt' else "dpi_engine"
+    engine_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), engine_name)
 
     if not os.path.exists(engine_path):
         print(f"Engine not found at {engine_path}, using mock data.")
